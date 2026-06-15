@@ -404,7 +404,7 @@ fn default_terminal_shell() -> String {
 }
 
 fn default_tail_command() -> String {
-    "Get-Content -Path '{logFile}' -Wait".to_string()
+    "Get-Content -Path '{logFile}' -Tail 300 -Wait".to_string()
 }
 
 const EXAMPLE_CONFIG: &str = r#"{
@@ -415,7 +415,7 @@ const EXAMPLE_CONFIG: &str = r#"{
     "terminal": {
       "program": "wt.exe",
       "shell": "powershell",
-      "tailCommand": "Get-Content -Path '{logFile}' -Wait"
+      "tailCommand": "Get-Content -Path '{logFile}' -Tail 300 -Wait"
     }
   },
   "groups": [

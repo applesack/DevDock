@@ -282,12 +282,13 @@ fn dispatch_service_event(registry: &ServiceRegistry, id: &str) -> Result<()> {
         let (operation, service_id) = rest
             .split_once(':')
             .context("invalid react-native menu event")?;
-        let input = match operation {
-            REACT_NATIVE_RELOAD_ACTION_ID => "r",
-            REACT_NATIVE_OPEN_DEV_MENU_ACTION_ID => "d",
+        return match operation {
+            REACT_NATIVE_RELOAD_ACTION_ID => registry.reload_react_native(service_id),
+            REACT_NATIVE_OPEN_DEV_MENU_ACTION_ID => {
+                registry.run_react_native_command(service_id, "d")
+            }
             _ => anyhow::bail!("unknown react-native operation '{operation}'"),
         };
-        return registry.run_react_native_command(service_id, input);
     }
 
     anyhow::bail!("unknown tray menu event '{id}'")
@@ -320,25 +321,46 @@ fn title_case(value: &str) -> String {
 
 fn create_icon() -> Image<'static> {
     const SIZE: usize = 32;
+    const BLUE: [u8; 4] = [35, 117, 232, 255];
+    const GREEN: [u8; 4] = [53, 229, 138, 255];
+
     let mut rgba = vec![0_u8; SIZE * SIZE * 4];
     for y in 0..SIZE {
         for x in 0..SIZE {
             let offset = (y * SIZE + x) * 4;
-            let rounded_corner = !(4..=27).contains(&x) && !(4..=27).contains(&y);
-            let is_d = (x == 9 && (8..24).contains(&y))
-                || ((8..22).contains(&x) && (y == 8 || y == 23))
-                || (x == 22 && (10..22).contains(&y));
-            let color = if is_d {
-                [255, 255, 255, 255]
-            } else if rounded_corner {
-                [0, 0, 0, 0]
+            let outer_window = inside_rounded_rect(x, y, (5, 4, 25, 21), 3);
+            let inner_window = inside_rounded_rect(x, y, (8, 7, 22, 18), 1);
+            let taskbar = inside_rounded_rect(x, y, (4, 23, 28, 26), 1);
+            let tray_resident = inside_rounded_rect(x, y, (25, 22, 29, 27), 2);
+
+            let color = if tray_resident {
+                GREEN
+            } else if (outer_window && !inner_window) || taskbar {
+                BLUE
             } else {
-                [37, 99, 235, 255]
+                [0, 0, 0, 0]
             };
             rgba[offset..offset + 4].copy_from_slice(&color);
         }
     }
     Image::new_owned(rgba, SIZE as u32, SIZE as u32)
+}
+
+fn inside_rounded_rect(
+    x: usize,
+    y: usize,
+    (left, top, right, bottom): (usize, usize, usize, usize),
+    radius: usize,
+) -> bool {
+    if x < left || x > right || y < top || y > bottom {
+        return false;
+    }
+
+    let nearest_x = x.clamp(left + radius, right - radius);
+    let nearest_y = y.clamp(top + radius, bottom - radius);
+    let dx = x.abs_diff(nearest_x);
+    let dy = y.abs_diff(nearest_y);
+    dx * dx + dy * dy <= radius * radius
 }
 
 fn create_status_icon(lifecycle: ServiceLifecycle) -> Image<'static> {

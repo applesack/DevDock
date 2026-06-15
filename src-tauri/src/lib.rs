@@ -2,6 +2,7 @@ mod config;
 mod logs;
 mod paths;
 mod process_manager;
+mod react_native;
 mod service;
 mod terminal;
 mod tray;

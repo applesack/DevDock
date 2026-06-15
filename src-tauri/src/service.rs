@@ -8,7 +8,7 @@ use crate::{
     config::{ActionKind, ActionWhen, LoadedConfig, ServiceConfig, ServiceType, service_log_path},
     logs,
     process_manager::ProcessManager,
-    terminal, windows_service,
+    react_native, terminal, windows_service,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -229,6 +229,11 @@ impl ServiceRegistry {
         self.processes.write_stdin(service_id, input)
     }
 
+    pub fn reload_react_native(&self, service_id: &str) -> Result<()> {
+        let service = self.find_running_react_native_service(service_id)?;
+        react_native::reload(&service)
+    }
+
     pub fn open_log(&self, service_id: &str) -> Result<()> {
         let service = self.find_service(service_id)?;
         let loaded = self.config.read();
@@ -280,6 +285,21 @@ impl ServiceRegistry {
             .find(|service| service.id == service_id)
             .cloned()
             .with_context(|| format!("service '{service_id}' does not exist"))
+    }
+
+    fn find_running_react_native_service(&self, service_id: &str) -> Result<ServiceConfig> {
+        let service = self.find_service(service_id)?;
+        if service.service_type != ServiceType::ReactNative {
+            bail!("service '{service_id}' is not a react-native service");
+        }
+        let state = self.get_service_state(service_id);
+        if state.lifecycle != ServiceLifecycle::Running {
+            bail!(
+                "react-native command is not available while service is {:?}",
+                state.lifecycle
+            );
+        }
+        Ok(service)
     }
 
     fn query_windows_service(&self, service: &ServiceConfig) -> RuntimeServiceState {

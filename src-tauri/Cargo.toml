@@ -1,6 +1,6 @@
 [package]
 name = "devdock"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Windows tray supervisor for local development services"
 authors = ["DevDock contributors"]
 edition = "2024"
